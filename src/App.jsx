@@ -17,7 +17,14 @@ export default function App() {
   }, [])
 
   const handleFocus = useCallback((node) => {
-    setBreadcrumb((prev) => [...prev, node])
+    setBreadcrumb(prev => {
+      // Already the current focus — do nothing
+      if (prev[prev.length - 1]?.id === node.id) return prev
+      // Node exists earlier in path — navigate back to it
+      const existingIdx = prev.findIndex(n => n.id === node.id)
+      if (existingIdx !== -1) return prev.slice(0, existingIdx + 1)
+      return [...prev, node]
+    })
     setFocusedNode(node)
     setSelectedNode(node)
   }, [])
@@ -35,16 +42,19 @@ export default function App() {
     setFocusedNode(null)
   }, [])
 
-  const nodeCount = nodes.length
-  const edgeCount = edges.length
+  // Stats and 3D props use file-level nodes only (sections are 2D-only)
+  const fileNodes = nodes.filter(n => !n.isSection)
+  const fileEdges = edges.filter(e => !e.isSection)
+  const nodeCount = fileNodes.length
+  const edgeCount = fileEdges.length
 
   return (
     <div className="app">
       {/* Canvas — 3D or 2D */}
       {is3D ? (
         <MindmapScene
-          nodes={nodes}
-          edges={edges}
+          nodes={fileNodes}
+          edges={fileEdges}
           positions={positions}
           selectedNode={selectedNode}
           focusedNode={focusedNode}
@@ -57,6 +67,7 @@ export default function App() {
           selectedNode={selectedNode}
           focusedNode={focusedNode}
           onNodeClick={handleNodeClick}
+          onFocus={handleFocus}
         />
       )}
 

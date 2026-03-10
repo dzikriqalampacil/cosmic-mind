@@ -81,32 +81,65 @@ export function parseVault(rawModules) {
   return files
 }
 
+// Extract ## (h2) sections from raw markdown into an array of { title, lines }
+function extractSections(rawContent) {
+  const sections = []
+  let current = null
+  for (const line of rawContent.split('\n')) {
+    const m = line.match(/^## (.+)$/)
+    if (m) {
+      if (current) sections.push(current)
+      current = { title: m[1].trim(), lines: [] }
+    } else if (current) {
+      current.lines.push(line)
+    }
+  }
+  if (current) sections.push(current)
+  return sections
+}
+
 export function buildGraph(files) {
-  const nodes = Object.values(files)
+  const fileList = Object.values(files)
+  const nodes = [...fileList]
   const edges = []
   const edgeSet = new Set()
 
-  for (const file of nodes) {
+  // Wikilink edges between file-level nodes
+  for (const file of fileList) {
     for (const link of file.links) {
-      // Match by id or by label
       const target =
         files[link.target] ||
-        Object.values(files).find(
-          (f) => f.label.toLowerCase() === link.target.toLowerCase()
-        )
+        fileList.find(f => f.label.toLowerCase() === link.target.toLowerCase())
 
       if (target && target.id !== file.id) {
         const edgeId = [file.id, target.id].sort().join('--')
         if (!edgeSet.has(edgeId)) {
           edgeSet.add(edgeId)
-          edges.push({
-            id: edgeId,
-            source: file.id,
-            target: target.id,
-          })
+          edges.push({ id: edgeId, source: file.id, target: target.id })
         }
       }
     }
+  }
+
+  // Section nodes: each ## heading becomes a child node of its file
+  for (const file of fileList) {
+    const sections = extractSections(file.rawContent)
+    sections.forEach((sec, i) => {
+      const secId = `${file.id}--sec${i}`
+      nodes.push({
+        id: secId,
+        label: sec.title,
+        content: marked.parse(sec.lines.join('\n'), { breaks: true }),
+        rawContent: sec.lines.join('\n'),
+        frontmatter: {},
+        links: [],
+        tags: file.tags,
+        color: file.color,
+        isSection: true,
+        parentId: file.id,
+      })
+      edges.push({ id: `${file.id}~~${secId}`, source: file.id, target: secId, isSection: true })
+    })
   }
 
   return { nodes, edges }

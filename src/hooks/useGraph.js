@@ -11,7 +11,11 @@ export function useGraph() {
   }, [])
 
   const positions = useMemo(() => {
-    return forceLayout3D(nodes, edges)
+    // 3D layout only uses file-level nodes; sections are 2D-only
+    const fileNodes = nodes.filter(n => !n.isSection)
+    const fileIds = new Set(fileNodes.map(n => n.id))
+    const fileEdges = edges.filter(e => fileIds.has(e.source) && fileIds.has(e.target))
+    return forceLayout3D(fileNodes, fileEdges)
   }, [nodes, edges])
 
   return { nodes, edges, positions }

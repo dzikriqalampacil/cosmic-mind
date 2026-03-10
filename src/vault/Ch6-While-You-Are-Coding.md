@@ -18,7 +18,7 @@ We should avoid programming by coincidence — relying on luck and accidental su
 - Don't code blindfolded
 - Proceed from a plan
 - Rely only on reliable things
-- Document your assumptions (see [[Ch4 A Pragmatic Paranoia]] — Design by Contract)
+- Document your assumptions (Design by Contract)
 - Don't just test your code, but test your assumptions as well
 - Prioritize your effort
 - Don't be a slave to history — don't let existing code dictate future code
@@ -46,7 +46,7 @@ Be pragmatic about choosing appropriate algorithms — the fastest one is not al
 Code needs to evolve; it's not a static thing.
 
 ### When Should You Refactor?
-- You've discovered a violation of the DRY principle (see [[Ch2 A Pragmatic Approach]])
+- You've discovered a violation of the DRY principle
 - You've discovered code that could be more orthogonal
 - Outdated knowledge — requirements drift
 - Performance improvements needed
