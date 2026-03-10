@@ -1,0 +1,11 @@
+services:
+  cosmic_mind:
+    build: .
+    container_name: cosmic_mind
+    restart: unless-stopped
+    networks:
+      - caddy_net
+
+networks:
+  caddy_net:
+    external: true

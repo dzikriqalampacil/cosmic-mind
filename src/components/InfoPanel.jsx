@@ -38,20 +38,19 @@ export default function InfoPanel({ node, onClose, onFocus }) {
         </div>
       </div>
 
-      {node.tags.length > 0 && (
-        <div className="info-panel__tags">
-          {node.tags.map((tag) => (
-            <span key={tag} className="info-panel__tag">
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )}
+      <div className="info-panel__content">
+        <div dangerouslySetInnerHTML={{ __html: node.content }} />
 
-      <div
-        className="info-panel__content"
-        dangerouslySetInnerHTML={{ __html: node.content }}
-      />
+        {node.tags.length > 0 && (
+          <div className="info-panel__tags">
+            {node.tags.map((tag) => (
+              <span key={tag} className="info-panel__tag">
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

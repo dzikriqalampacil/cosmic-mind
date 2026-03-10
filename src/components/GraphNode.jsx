@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Text } from '@react-three/drei'
+import { Text, Billboard } from '@react-three/drei'
 
 const FLOAT_SPEED = 0.4
 const FLOAT_AMP = 0.25
@@ -10,20 +10,16 @@ export default function GraphNode({ node, position, isSelected, isHighlighted, i
   const ringRef = useRef()
   const [hovered, setHovered] = useState(false)
 
-  // Stable per-node phase offset based on id string
   const phaseOffset = hashToPhase(node.id)
 
   useFrame((state) => {
     if (!groupRef.current || !position) return
     const t = state.clock.elapsedTime
-    // Floating bob
     groupRef.current.position.y = position.y + Math.sin(t * FLOAT_SPEED + phaseOffset) * FLOAT_AMP
-    // Slow spin on the outer ring
     if (ringRef.current) {
       ringRef.current.rotation.z = t * 0.3
       ringRef.current.rotation.x = t * 0.15
     }
-    // Scale pulse when selected
     const targetScale = isSelected
       ? 1.15 + Math.sin(t * 4) * 0.05
       : hovered
@@ -93,41 +89,27 @@ export default function GraphNode({ node, position, isSelected, isHighlighted, i
         />
       </mesh>
 
-      {/* Label */}
-      <Text
-        position={[0, radius + 0.55, 0]}
-        fontSize={0.38}
-        color="white"
-        anchorX="center"
-        anchorY="bottom"
-        outlineWidth={0.04}
-        outlineColor="#000022"
-        fillOpacity={labelOpacity}
-        outlineOpacity={labelOpacity}
-        renderOrder={1}
-        depthTest={false}
-      >
-        {node.label}
-      </Text>
-
-      {/* Tag count badge */}
-      {node.tags.length > 0 && (
+      {/* Label — Billboard keeps text facing camera at all angles */}
+      <Billboard position={[0, radius + 0.55, 0]}>
         <Text
-          position={[radius + 0.3, radius + 0.1, 0]}
-          fontSize={0.22}
-          color={color}
-          anchorX="left"
-          anchorY="middle"
-          fillOpacity={isDimmed ? 0.2 : 0.7}
+          fontSize={0.38}
+          color="white"
+          anchorX="center"
+          anchorY="bottom"
+          outlineWidth={0.04}
+          outlineColor="#000022"
+          fillOpacity={labelOpacity}
+          outlineOpacity={labelOpacity}
+          renderOrder={1}
+          depthTest={false}
         >
-          {node.tags.slice(0, 2).map((t) => `#${t}`).join(' ')}
+          {node.label}
         </Text>
-      )}
+      </Billboard>
     </group>
   )
 }
 
-// Deterministic hash → float in [0, 2π]
 function hashToPhase(id) {
   let hash = 0
   for (let i = 0; i < id.length; i++) {

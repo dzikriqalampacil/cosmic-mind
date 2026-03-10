@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import MindmapScene from './components/MindmapScene'
+import MindmapScene2D from './components/MindmapScene2D'
 import InfoPanel from './components/InfoPanel'
 import { useGraph } from './hooks/useGraph'
 import './App.css'
@@ -9,6 +10,7 @@ export default function App() {
   const [selectedNode, setSelectedNode] = useState(null)
   const [focusedNode, setFocusedNode] = useState(null)
   const [breadcrumb, setBreadcrumb] = useState([])
+  const [is3D, setIs3D] = useState(true)
 
   const handleNodeClick = useCallback((node) => {
     setSelectedNode(node)
@@ -38,15 +40,25 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* Full-screen 3D canvas */}
-      <MindmapScene
-        nodes={nodes}
-        edges={edges}
-        positions={positions}
-        selectedNode={selectedNode}
-        focusedNode={focusedNode}
-        onNodeClick={handleNodeClick}
-      />
+      {/* Canvas — 3D or 2D */}
+      {is3D ? (
+        <MindmapScene
+          nodes={nodes}
+          edges={edges}
+          positions={positions}
+          selectedNode={selectedNode}
+          focusedNode={focusedNode}
+          onNodeClick={handleNodeClick}
+        />
+      ) : (
+        <MindmapScene2D
+          nodes={nodes}
+          edges={edges}
+          selectedNode={selectedNode}
+          focusedNode={focusedNode}
+          onNodeClick={handleNodeClick}
+        />
+      )}
 
       {/* Top-left HUD */}
       <header className="hud-header">
@@ -69,13 +81,49 @@ export default function App() {
         </p>
       </header>
 
+      {/* 3D / 2D toggle */}
+      <div className="view-toggle">
+        <button
+          className={`view-toggle__btn ${is3D ? 'view-toggle__btn--active' : ''}`}
+          onClick={() => setIs3D(true)}
+        >
+          3D
+        </button>
+        <button
+          className={`view-toggle__btn ${!is3D ? 'view-toggle__btn--active' : ''}`}
+          onClick={() => setIs3D(false)}
+        >
+          2D
+        </button>
+      </div>
+
       {/* Controls hint */}
       <div className="hud-controls">
-        <span>Drag to orbit</span>
-        <span className="hud-sep">·</span>
-        <span>Scroll to zoom</span>
-        <span className="hud-sep">·</span>
-        <span>Click node to explore</span>
+        {is3D ? (
+          <>
+            <span className="hint-desktop">Drag to orbit</span>
+            <span className="hud-sep hint-desktop">·</span>
+            <span className="hint-desktop">Scroll to zoom</span>
+            <span className="hud-sep hint-desktop">·</span>
+            <span className="hint-mobile">Pinch to zoom</span>
+            <span className="hud-sep hint-mobile">·</span>
+            <span className="hint-mobile">Drag to orbit</span>
+            <span className="hud-sep">·</span>
+            <span>Tap node to explore</span>
+          </>
+        ) : (
+          <>
+            <span className="hint-desktop">Drag to pan</span>
+            <span className="hud-sep hint-desktop">·</span>
+            <span className="hint-desktop">Scroll to zoom</span>
+            <span className="hud-sep hint-desktop">·</span>
+            <span className="hint-mobile">Pinch to zoom</span>
+            <span className="hud-sep hint-mobile">·</span>
+            <span className="hint-mobile">Drag to pan</span>
+            <span className="hud-sep">·</span>
+            <span>Tap node to explore</span>
+          </>
+        )}
       </div>
 
       {/* Breadcrumb navigation */}
@@ -114,7 +162,7 @@ export default function App() {
         </nav>
       )}
 
-      {/* Info panel slides in from right */}
+      {/* Info panel */}
       <InfoPanel
         node={selectedNode}
         onClose={() => setSelectedNode(null)}
