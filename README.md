@@ -54,6 +54,12 @@ docker compose logs -f
 docker compose down
 ```
 
+#### Redeploy
+
+```bash
+git pull && docker compose build && docker compose up -d
+```
+
 If you're not using Caddy, expose port 80 directly by adding a `ports` entry to `docker-compose.yml`:
 
 ```yaml
