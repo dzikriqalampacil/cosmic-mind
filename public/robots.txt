@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://cosmic-mind.app/sitemap.xml
+Sitemap: https://cosmicmind.dzikriqalam.com/sitemap.xml
