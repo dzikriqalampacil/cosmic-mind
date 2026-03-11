@@ -6,6 +6,24 @@ const SEC_RX  = 14
 const ROOT_RX = 24
 const LINE_H  = 14   // px between text lines
 
+// Compute a scale+translate that fits all positions into the viewport
+function computeFit(positions, viewW, viewH) {
+  const pts = Object.values(positions)
+  if (!pts.length) return { x: viewW / 2, y: viewH / 2, scale: 1 }
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y)
+  const minX = Math.min(...xs) - 140, maxX = Math.max(...xs) + 140
+  const minY = Math.min(...ys) - 80,  maxY = Math.max(...ys) + 80
+  const bw = maxX - minX, bh = maxY - minY
+  const isMobile = viewW < 768
+  const pad = isMobile ? 40 : 80
+  const scale = Math.min((viewW - pad * 2) / bw, (viewH - pad * 2) / bh, isMobile ? 0.9 : 1.1)
+  return {
+    x: viewW / 2 - ((minX + maxX) / 2) * scale,
+    y: viewH / 2 - ((minY + maxY) / 2) * scale,
+    scale,
+  }
+}
+
 // Word-wrap a label into at most 2 lines given a max chars-per-line limit
 function wrapLabel(label, maxChars) {
   if (label.length <= maxChars) return [label]
@@ -58,6 +76,9 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
   )
   const transformRef = useRef(transform)
   useEffect(() => { transformRef.current = transform }, [transform])
+
+  // Touch state machine
+  const touchState = useRef({ type: 'none' })
 
   // Nodes that have section children → double-click focusable
   const focusableIds = useMemo(() => {
@@ -119,7 +140,11 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
   )
 
   const [positions, setPositions] = useState(layoutPositions)
-  useEffect(() => { setPositions(layoutPositions) }, [layoutPositions])
+  useEffect(() => {
+    setPositions(layoutPositions)
+    const fit = computeFit(layoutPositions, window.innerWidth, window.innerHeight)
+    setTransform(fit)
+  }, [layoutPositions])
 
   // Auto-fit the view whenever the layout changes
   useEffect(() => {
@@ -164,17 +189,16 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
     [visibleNodes]
   )
 
-  // Drag state
-  const panDragging   = useRef(false)
-  const nodeDragging  = useRef(null)
-  const nodeMoved     = useRef(false)
-  const lastPos       = useRef({ x: 0, y: 0 })
-  const lastTouchDist = useRef(null)
+  // ── Mouse drag ──
+  const panDragging  = useRef(false)
+  const nodeDragging = useRef(null)
+  const nodeMoved    = useRef(false)
+  const lastMousePos = useRef({ x: 0, y: 0 })
 
   const onMouseMove = useCallback((e) => {
-    const dx = e.clientX - lastPos.current.x
-    const dy = e.clientY - lastPos.current.y
-    lastPos.current = { x: e.clientX, y: e.clientY }
+    const dx = e.clientX - lastMousePos.current.x
+    const dy = e.clientY - lastMousePos.current.y
+    lastMousePos.current = { x: e.clientX, y: e.clientY }
     if (nodeDragging.current) {
       const scale = transformRef.current.scale
       setPositions(prev => {
@@ -204,16 +228,17 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
 
   const onBgMouseDown = useCallback((e) => {
     panDragging.current = true
-    lastPos.current = { x: e.clientX, y: e.clientY }
+    lastMousePos.current = { x: e.clientX, y: e.clientY }
   }, [])
 
   const onNodeMouseDown = useCallback((e, nodeId) => {
     e.stopPropagation()
     nodeDragging.current = nodeId
     nodeMoved.current = false
-    lastPos.current = { x: e.clientX, y: e.clientY }
+    lastMousePos.current = { x: e.clientX, y: e.clientY }
   }, [])
 
+  // ── Scroll zoom ──
   const onWheel = useCallback((e) => {
     e.preventDefault()
     const factor = e.deltaY < 0 ? 1.1 : 0.9
@@ -229,61 +254,131 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
     })
   }, [])
 
-  const onTouchStart = useCallback((e) => {
+  // ── Touch gestures (all native, non-passive) ──
+  const handleTouchStart = useCallback((e) => {
+    e.preventDefault()
     if (e.touches.length === 1) {
-      panDragging.current = true
-      lastPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-    } else if (e.touches.length === 2) {
-      panDragging.current = false
+      touchState.current = {
+        type: 'pan',
+        lastX: e.touches[0].clientX,
+        lastY: e.touches[0].clientY,
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        moved: false,
+        targetNode: e.target.closest('.node-hit')?.__nodeId ?? null,
+      }
+    } else if (e.touches.length >= 2) {
       const dx = e.touches[0].clientX - e.touches[1].clientX
       const dy = e.touches[0].clientY - e.touches[1].clientY
-      lastTouchDist.current = Math.sqrt(dx * dx + dy * dy)
+      touchState.current = {
+        type: 'pinch',
+        lastDist: Math.sqrt(dx * dx + dy * dy),
+        lastMidX: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        lastMidY: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+      }
     }
   }, [])
 
-  const onTouchMove = useCallback((e) => {
+  const handleTouchMove = useCallback((e) => {
     e.preventDefault()
-    if (e.touches.length === 1 && panDragging.current) {
-      setTransform(t => ({
-        ...t,
-        x: t.x + e.touches[0].clientX - lastPos.current.x,
-        y: t.y + e.touches[0].clientY - lastPos.current.y,
-      }))
-      lastPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-    } else if (e.touches.length === 2 && lastTouchDist.current) {
+    const ts = touchState.current
+    if (ts.type === 'pan' && e.touches.length === 1) {
+      const dx = e.touches[0].clientX - ts.lastX
+      const dy = e.touches[0].clientY - ts.lastY
+      if (Math.abs(e.touches[0].clientX - ts.startX) > 6 ||
+          Math.abs(e.touches[0].clientY - ts.startY) > 6) {
+        ts.moved = true
+      }
+      setTransform(t => ({ ...t, x: t.x + dx, y: t.y + dy }))
+      ts.lastX = e.touches[0].clientX
+      ts.lastY = e.touches[0].clientY
+    } else if (e.touches.length >= 2) {
+      // Switch to pinch if a second finger appeared
+      if (ts.type !== 'pinch') {
+        const dx = e.touches[0].clientX - e.touches[1].clientX
+        const dy = e.touches[0].clientY - e.touches[1].clientY
+        touchState.current = {
+          type: 'pinch',
+          lastDist: Math.sqrt(dx * dx + dy * dy),
+          lastMidX: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+          lastMidY: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+        }
+        return
+      }
       const dx = e.touches[0].clientX - e.touches[1].clientX
       const dy = e.touches[0].clientY - e.touches[1].clientY
       const dist = Math.sqrt(dx * dx + dy * dy)
-      setTransform(t => ({
-        ...t,
-        scale: Math.min(4, Math.max(0.15, t.scale * (dist / lastTouchDist.current))),
-      }))
-      lastTouchDist.current = dist
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2
+      const factor = dist / ts.lastDist
+      const panDx = midX - ts.lastMidX
+      const panDy = midY - ts.lastMidY
+      setTransform(t => {
+        const newScale = Math.min(4, Math.max(0.15, t.scale * factor))
+        const rect = svgRef.current?.getBoundingClientRect()
+        const px = midX - (rect?.left ?? 0)
+        const py = midY - (rect?.top ?? 0)
+        return {
+          x: px - (px - t.x) * (newScale / t.scale) + panDx,
+          y: py - (py - t.y) * (newScale / t.scale) + panDy,
+          scale: newScale,
+        }
+      })
+      ts.lastDist = dist
+      ts.lastMidX = midX
+      ts.lastMidY = midY
     }
   }, [])
 
-  const onTouchEnd = useCallback(() => {
-    panDragging.current = false
-    lastTouchDist.current = null
-  }, [])
+  const handleTouchEnd = useCallback((e) => {
+    const ts = touchState.current
+    // Tap detection: single finger, barely moved
+    if (ts.type === 'pan' && !ts.moved && e.changedTouches.length === 1) {
+      // Find the node element that was tapped
+      const el = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY)
+      const nodeEl = el?.closest('[data-node-id]')
+      if (nodeEl) {
+        const nodeId = nodeEl.dataset.nodeId
+        const node = visibleNodes.find(n => n.id === nodeId)
+        if (node) onNodeClick(node)
+      }
+    }
+    if (e.touches.length === 0) {
+      touchState.current = { type: 'none' }
+    } else if (e.touches.length === 1) {
+      touchState.current = {
+        type: 'pan',
+        lastX: e.touches[0].clientX,
+        lastY: e.touches[0].clientY,
+        startX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        moved: false,
+      }
+    }
+  }, [visibleNodes, onNodeClick])
 
   useEffect(() => {
     const svg = svgRef.current
     if (!svg) return
-    svg.addEventListener('wheel', onWheel, { passive: false })
-    svg.addEventListener('touchmove', onTouchMove, { passive: false })
+    svg.addEventListener('wheel',      onWheel,          { passive: false })
+    svg.addEventListener('touchstart', handleTouchStart, { passive: false })
+    svg.addEventListener('touchmove',  handleTouchMove,  { passive: false })
+    svg.addEventListener('touchend',   handleTouchEnd,   { passive: false })
     return () => {
-      svg.removeEventListener('wheel', onWheel)
-      svg.removeEventListener('touchmove', onTouchMove)
+      svg.removeEventListener('wheel',      onWheel)
+      svg.removeEventListener('touchstart', handleTouchStart)
+      svg.removeEventListener('touchmove',  handleTouchMove)
+      svg.removeEventListener('touchend',   handleTouchEnd)
     }
-  }, [onWheel, onTouchMove])
+  }, [onWheel, handleTouchStart, handleTouchMove, handleTouchEnd])
 
   return (
     <svg
       ref={svgRef}
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', background: '#0d1117' }}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
+      style={{
+        position: 'absolute', inset: 0, width: '100%', height: '100%',
+        background: '#0d1117', touchAction: 'none',
+      }}
     >
       <defs>
         <marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
@@ -356,6 +451,7 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
             <g
               key={node.id}
               className="node-hit"
+              data-node-id={node.id}
               style={{ cursor: 'pointer' }}
               onMouseDown={(e) => onNodeMouseDown(e, node.id)}
               onDoubleClick={(e) => {

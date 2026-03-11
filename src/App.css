@@ -4,6 +4,7 @@
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  touch-action: none; /* prevent browser scroll/zoom interference */
 }
 
 /* Canvas fills the screen (Three.js canvas is a direct child) */
