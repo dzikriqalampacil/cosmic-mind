@@ -74,17 +74,7 @@ export default function App() {
       {/* Top-left HUD */}
       <header className="hud-header">
         <div className="hud-logo">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="3" fill="#6366f1" />
-            <circle cx="4" cy="6" r="2" fill="#8b5cf6" />
-            <circle cx="20" cy="6" r="2" fill="#06b6d4" />
-            <circle cx="4" cy="18" r="2" fill="#10b981" />
-            <circle cx="20" cy="18" r="2" fill="#f59e0b" />
-            <line x1="12" y1="12" x2="4" y2="6" stroke="#6366f1" strokeWidth="1.5" strokeOpacity="0.6" />
-            <line x1="12" y1="12" x2="20" y2="6" stroke="#6366f1" strokeWidth="1.5" strokeOpacity="0.6" />
-            <line x1="12" y1="12" x2="4" y2="18" stroke="#6366f1" strokeWidth="1.5" strokeOpacity="0.6" />
-            <line x1="12" y1="12" x2="20" y2="18" stroke="#6366f1" strokeWidth="1.5" strokeOpacity="0.6" />
-          </svg>
+          <img src="/favicon.png" width="20" height="20" alt="Cosmic Mind logo" />
           <span>Cosmic Mind</span>
         </div>
         <p className="hud-subtitle">

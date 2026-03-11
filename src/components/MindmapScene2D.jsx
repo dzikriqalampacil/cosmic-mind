@@ -121,6 +121,44 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
   const [positions, setPositions] = useState(layoutPositions)
   useEffect(() => { setPositions(layoutPositions) }, [layoutPositions])
 
+  // Auto-fit the view whenever the layout changes
+  useEffect(() => {
+    const vals = Object.values(layoutPositions)
+    if (!vals.length) return
+
+    const xs = vals.map(p => p.x)
+    const ys = vals.map(p => p.y)
+    // Add padding for node dimensions
+    const minX = Math.min(...xs) - 130
+    const maxX = Math.max(...xs) + 130
+    const minY = Math.min(...ys) - 50
+    const maxY = Math.max(...ys) + 50
+
+    const graphW = maxX - minX
+    const graphH = maxY - minY
+
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+
+    // Reserve space: top HUD ~90px, bottom controls bar ~70px, sides ~40px
+    const padTop    = 90
+    const padBottom = 70
+    const padSide   = 40
+    const availW = vw - padSide * 2
+    const availH = vh - padTop - padBottom
+
+    const scale = Math.min(availW / graphW, availH / graphH, 1)
+
+    const cx = (minX + maxX) / 2
+    const cy = (minY + maxY) / 2
+
+    setTransform({
+      x: vw / 2 - cx * scale,
+      y: padTop + availH / 2 - cy * scale,
+      scale,
+    })
+  }, [layoutPositions])
+
   const nodeMap = useMemo(
     () => Object.fromEntries(visibleNodes.map(n => [n.id, n])),
     [visibleNodes]
