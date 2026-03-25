@@ -199,9 +199,9 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
     //   for the densest chapters (7 sections × the same 45° sector).
     // Sections are positioned from the ROOT origin so their angle from root is
     // directly controlled and they are guaranteed to stay inside their sector.
-    const SECTOR_USE = 0.80
-    const MIN_ARC    = 150
-    const MIN_ROOT_R = 500
+    const SECTOR_USE = 0.62   // leaves 38% of sector as buffer on each side
+    const MIN_ARC    = 200   // min arc-distance (px) between section centres
+    const MIN_ROOT_R = 650   // minimum orbit radius from root
 
     for (const [parentId, secIds] of Object.entries(sectionsByParent)) {
       const p = filePositions[parentId]
@@ -461,15 +461,15 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
       ref={svgRef}
       style={{
         position: 'absolute', inset: 0, width: '100%', height: '100%',
-        background: '#0d1117', touchAction: 'none',
+        background: '#121212', touchAction: 'none',
       }}
     >
       <defs>
         <marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
-          <path d="M0,1 L0,6 L6,3.5 z" fill="#2d3f55" />
+          <path d="M0,1 L0,6 L6,3.5 z" fill="#4A7A9B" />
         </marker>
         <marker id="arr-hi" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
-          <path d="M0,1 L0,6 L6,3.5 z" fill="#6366f1" />
+          <path d="M0,1 L0,6 L6,3.5 z" fill="#7C5CFF" />
         </marker>
       </defs>
 
@@ -510,8 +510,9 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
               key={edge.id}
               d={`M ${start.x} ${start.y} Q ${cpx} ${cpy} ${end.x} ${end.y}`}
               fill="none"
-              stroke={isHighlighted ? '#6366f1' : edge.isSection ? '#1a2e47' : '#1e3a5f'}
-              strokeWidth={isHighlighted ? 2 : 1.5}
+              stroke={isHighlighted ? '#7C5CFF' : '#4A7A9B'}
+              strokeWidth={isHighlighted ? 2 : 1}
+              strokeOpacity={isHighlighted ? 0.9 : 0.55}
               strokeDasharray={edge.isSection ? '4 3' : undefined}
               markerEnd={isHighlighted ? 'url(#arr-hi)' : 'url(#arr)'}
             />
@@ -553,32 +554,33 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
                 <rect
                   x={p.x - w / 2 - 5} y={p.y - h / 2 - 5}
                   width={w + 10} height={h + 10} rx={rx + 5}
-                  fill="none" stroke={node.color} strokeWidth={2} opacity={0.45}
+                  fill="none" stroke="#ffffff" strokeWidth={2} opacity={0.5}
                 />
               )}
 
               <rect
                 x={p.x - w / 2} y={p.y - h / 2}
                 width={w} height={h} rx={rx}
-                fill={p.isRoot ? node.color : node.isSection ? 'transparent' : isSelected ? '#1e2d45' : '#161e2e'}
-                stroke={p.isRoot ? 'none' : node.color}
-                strokeWidth={node.isSection ? 1 : 1.5}
-                strokeOpacity={node.isSection ? 0.5 : 1}
+                fill={p.isRoot ? '#7C5CFF' : node.isSection ? 'transparent' : node.color}
+                stroke={node.isSection ? node.color : 'none'}
+                strokeWidth={1}
+                strokeOpacity={0.35}
                 strokeDasharray={node.isSection ? '4 3' : undefined}
-                opacity={isDimmed ? 0.25 : 1}
+                opacity={isDimmed ? 0.2 : 1}
               />
 
               <text
                 textAnchor="middle"
                 fontSize={p.isRoot ? 13 : node.isSection ? 10 : 11}
                 fontFamily="Inter, system-ui, sans-serif"
-                fontWeight={p.isRoot || isSelected ? 700 : 500}
+                fontWeight={p.isRoot ? 700 : node.isSection ? 500 : 600}
                 fill={
-                  isDimmed ? '#3a4a5c' :
-                  p.isRoot ? '#ffffff' :
-                  node.isSection ? '#7a8fa8' :
-                  isSelected ? '#e2e8f0' : '#94a3b8'
+                  isDimmed ? '#2A3A4A' :
+                  p.isRoot ? '#FFFFFF' :
+                  node.isSection ? '#EAEAEA' :
+                  node.textColor || '#EAEAEA'
                 }
+                fillOpacity={node.isSection ? 0.75 : 1}
                 style={{ pointerEvents: 'none', userSelect: 'none' }}
               >
                 {lines.map((line, i) => (

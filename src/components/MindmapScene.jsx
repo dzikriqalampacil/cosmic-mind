@@ -118,11 +118,11 @@ export default function MindmapScene({
   return (
     <Canvas
       camera={{ position: [0, 0, 35], fov: 60 }}
-      style={{ background: '#060612' }}
+      style={{ background: '#121212' }}
       gl={{ antialias: true, toneMapping: 3 /* ACESFilmicToneMapping */ }}
     >
-      <color attach="background" args={['#060612']} />
-      <fog attach="fog" args={['#060612', 50, 150]} />
+      <color attach="background" args={['#121212']} />
+      <fog attach="fog" args={['#121212', 50, 150]} />
 
       <ambientLight intensity={0.3} />
       <pointLight position={[20, 20, 20]} intensity={1.5} color="#8b5cf6" />

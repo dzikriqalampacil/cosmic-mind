@@ -18,10 +18,10 @@ export default function GraphEdge({ edge, positions, highlighted }) {
   return (
     <Line
       points={points}
-      color={highlighted ? '#a5f3fc' : '#4488ff'}
+      color={highlighted ? '#7C5CFF' : '#2A3A4A'}
       lineWidth={highlighted ? 2 : 1}
       transparent
-      opacity={highlighted ? 0.7 : 0.25}
+      opacity={highlighted ? 0.85 : 0.65}
     />
   )
 }

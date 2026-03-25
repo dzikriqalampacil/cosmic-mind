@@ -93,13 +93,10 @@ export default function GraphNode({ node, position, isSelected, isDimmed, onClic
       <Billboard position={[0, radius + 0.55, 0]}>
         <Text
           fontSize={0.38}
-          color="white"
+          color="#EAEAEA"
           anchorX="center"
           anchorY="bottom"
-          outlineWidth={0.04}
-          outlineColor="#000022"
           fillOpacity={labelOpacity}
-          outlineOpacity={labelOpacity}
           renderOrder={1}
           depthTest={false}
         >

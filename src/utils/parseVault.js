@@ -1,17 +1,9 @@
 import { marked } from 'marked'
 
-const NODE_COLORS = [
-  '#6366f1', // indigo
-  '#8b5cf6', // violet
-  '#06b6d4', // cyan
-  '#10b981', // emerald
-  '#f59e0b', // amber
-  '#ef4444', // red
-  '#ec4899', // pink
-  '#14b8a6', // teal
-  '#3b82f6', // blue
-  '#a855f7', // purple
-]
+// Flat, non-neon palette for chapter nodes — cycles across files
+const NODE_COLORS = ['#FFD166', '#5DADE2', '#52D1A5', '#9B7EDE']
+// Matching text colors (dark on light bg, light on dark bg)
+const NODE_TEXT_COLORS = ['#1A1A1A', '#0B1B2B', '#0F2A1F', '#1A102A']
 
 // Simple YAML frontmatter parser — handles the title/tags format used in vault files
 function parseFrontmatter(raw) {
@@ -74,6 +66,7 @@ export function parseVault(rawModules) {
         tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
         collection: frontmatter.collection || null,
         color: NODE_COLORS[colorIndex % NODE_COLORS.length],
+        textColor: NODE_TEXT_COLORS[colorIndex % NODE_TEXT_COLORS.length],
       }
       colorIndex++
     } catch (e) {
@@ -138,6 +131,7 @@ export function buildGraph(files) {
         links: [],
         tags: file.tags,
         color: file.color,
+        textColor: file.textColor,
         isSection: true,
         parentId: file.id,
       })
