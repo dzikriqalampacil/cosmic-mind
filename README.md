@@ -18,6 +18,8 @@ An interactive 3D/2D mindmap visualization for your Markdown knowledge vault. No
 
 ## Development
 
+### Option 1 — Local
+
 ```bash
 # Install dependencies
 npm install
@@ -25,6 +27,20 @@ npm install
 # Start dev server with hot reload (http://localhost:5173)
 npm run dev
 ```
+
+### Option 2 — Docker (recommended)
+
+Uses `Dockerfile.dev` + `docker-compose.dev.yml`. Source files are mounted as a volume so hot reload (HMR) works normally.
+
+```bash
+# Build and start
+docker compose -f docker-compose.dev.yml up --build
+
+# Stop
+docker compose -f docker-compose.dev.yml down
+```
+
+Then visit `http://localhost:5173`.
 
 To add or edit notes, place `.md` files in `src/vault/`. Wikilinks (`[[Note Title]]`) become edges in the graph.
 

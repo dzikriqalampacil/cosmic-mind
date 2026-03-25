@@ -6,20 +6,24 @@ const SEC_RX  = 14
 const ROOT_RX = 24
 const LINE_H  = 14   // px between text lines
 
-// Compute a scale+translate that fits all positions into the viewport
-function computeFit(positions, viewW, viewH) {
-  const pts = Object.values(positions)
-  if (!pts.length) return { x: viewW / 2, y: viewH / 2, scale: 1 }
-  const xs = pts.map(p => p.x), ys = pts.map(p => p.y)
-  const minX = Math.min(...xs) - 140, maxX = Math.max(...xs) + 140
-  const minY = Math.min(...ys) - 80,  maxY = Math.max(...ys) + 80
-  const bw = maxX - minX, bh = maxY - minY
-  const isMobile = viewW < 768
-  const pad = isMobile ? 40 : 80
-  const scale = Math.min((viewW - pad * 2) / bw, (viewH - pad * 2) / bh, isMobile ? 0.9 : 1.1)
+
+// Compute the viewport transform that fits the given positions into the screen
+function computeViewFit(layoutPositions, fitIds) {
+  const fitEntries = fitIds
+    ? Object.entries(layoutPositions).filter(([id]) => fitIds.has(id))
+    : Object.entries(layoutPositions)
+  if (!fitEntries.length) return { x: window.innerWidth / 2, y: window.innerHeight / 2, scale: 1 }
+  const xs = fitEntries.map(([, p]) => p.x)
+  const ys = fitEntries.map(([, p]) => p.y)
+  const minX = Math.min(...xs) - 130, maxX = Math.max(...xs) + 130
+  const minY = Math.min(...ys) - 50,  maxY = Math.max(...ys) + 50
+  const vw = window.innerWidth, vh = window.innerHeight
+  const padTop = 90, padBottom = 70, padSide = 40
+  const availH = vh - padTop - padBottom
+  const scale = Math.min((vw - padSide * 2) / (maxX - minX), availH / (maxY - minY), 1)
   return {
-    x: viewW / 2 - ((minX + maxX) / 2) * scale,
-    y: viewH / 2 - ((minY + maxY) / 2) * scale,
+    x: vw / 2 - ((minX + maxX) / 2) * scale,
+    y: padTop + availH / 2 - ((minY + maxY) / 2) * scale,
     scale,
   }
 }
@@ -90,21 +94,19 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
     return ids
   }, [nodes, edges])
 
-  // Visible set depends on focus state
-  const { visibleNodes, visibleEdges } = useMemo(() => {
+  // Visible set depends on focus state.
+  // fitIds: when set, the initial viewport fits only those node IDs — the rest
+  // exist in the layout but start out-of-bounds (user pans to discover them).
+  const { visibleNodes, visibleEdges, fitIds } = useMemo(() => {
     if (!focusedNode) {
-      // Normal view: file-level nodes only (no sections)
-      const fileNodes = nodes.filter(n => !n.isSection)
-      const fileIds = new Set(fileNodes.map(n => n.id))
-      return {
-        visibleNodes: fileNodes,
-        visibleEdges: edges.filter(e => fileIds.has(e.source) && fileIds.has(e.target)),
-      }
+      // All nodes rendered; initial fit covers only the file-level (chapter) nodes.
+      // Section nodes are positioned further out and revealed by panning.
+      const fileIds = new Set(nodes.filter(n => !n.isSection).map(n => n.id))
+      return { visibleNodes: nodes, visibleEdges: edges, fitIds: fileIds }
     }
 
     if (focusedNode.isSection) {
-      // Sections are leaves — show only the section itself
-      return { visibleNodes: [focusedNode], visibleEdges: [] }
+      return { visibleNodes: [focusedNode], visibleEdges: [], fitIds: null }
     }
 
     // Focused on a chapter: show chapter + its section children
@@ -114,6 +116,7 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
       return {
         visibleNodes: nodes.filter(n => childIds.has(n.id)),
         visibleEdges: secEdges,
+        fitIds: null,
       }
     }
 
@@ -131,58 +134,134 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
         fileIds.has(e.source) && fileIds.has(e.target) &&
         connected.has(e.source) && connected.has(e.target)
       ),
+      fitIds: null,
     }
   }, [nodes, edges, focusedNode])
 
-  const layoutPositions = useMemo(
-    () => radialLayout(visibleNodes, visibleEdges, focusedNode?.id ?? null),
-    [visibleNodes, visibleEdges, focusedNode]
+  // Compute radial layout using file-level nodes only so sections don't inflate
+  // totalLeaves and push chapter nodes to a huge radius.
+  const { layoutNodes, layoutEdges } = useMemo(() => {
+    if (focusedNode) return { layoutNodes: visibleNodes, layoutEdges: visibleEdges }
+    const fileNodes = visibleNodes.filter(n => !n.isSection)
+    const fileIds = new Set(fileNodes.map(n => n.id))
+    return {
+      layoutNodes: fileNodes,
+      layoutEdges: visibleEdges.filter(e => fileIds.has(e.source) && fileIds.has(e.target)),
+    }
+  }, [visibleNodes, visibleEdges, focusedNode])
+
+  const filePositions = useMemo(
+    () => radialLayout(layoutNodes, layoutEdges, focusedNode?.id ?? null),
+    [layoutNodes, layoutEdges, focusedNode]
   )
 
-  const [positions, setPositions] = useState(layoutPositions)
+  // For default view, satellite-position section nodes around their parent chapter.
+  // Each chapter is assigned an exclusive angular sector (midpoints between adjacent
+  // chapter angles). Sections are placed strictly within that sector so edge fans
+  // from different chapters never overlap → no edge crossings.
+  const layoutPositions = useMemo(() => {
+    if (focusedNode) return filePositions
+    const result = { ...filePositions }
+    const sectionsByParent = {}
+    for (const n of visibleNodes) {
+      if (!n.isSection || !n.parentId) continue
+      // Root node section nodes are skipped — the root doesn't need them displayed.
+      const parentPos = filePositions[n.parentId]
+      if (parentPos?.isRoot) continue
+      if (!sectionsByParent[n.parentId]) sectionsByParent[n.parentId] = []
+      sectionsByParent[n.parentId].push(n.id)
+    }
+
+    // Compute exclusive angular sector for each chapter node.
+    // Sort chapters by their angle from root, then assign each chapter the arc
+    // between its two neighbouring chapters' midpoints.
+    const chapterAngles = Object.entries(filePositions)
+      .filter(([, p]) => !p.isRoot)
+      .map(([id, p]) => ({ id, angle: Math.atan2(p.y, p.x) }))
+      .sort((a, b) => a.angle - b.angle)
+    const nCh = chapterAngles.length
+    const sectors = {}
+    for (let i = 0; i < nCh; i++) {
+      const curr = chapterAngles[i]
+      const prev = chapterAngles[(i - 1 + nCh) % nCh]
+      const next = chapterAngles[(i + 1) % nCh]
+      let prevA = prev.angle, nextA = next.angle
+      if (prevA > curr.angle) prevA -= Math.PI * 2
+      if (nextA < curr.angle) nextA += Math.PI * 2
+      sectors[curr.id] = { min: (prevA + curr.angle) / 2, max: (curr.angle + nextA) / 2 }
+    }
+
+    // Section placement:
+    // SECTOR_USE: fraction of the chapter's sector actually used — the remaining
+    //   20 % acts as a buffer so adjacent chapters' outermost sections stay apart.
+    // MIN_ARC: desired arc distance (px) between consecutive section centres.
+    //   Nodes are at most 190 px wide; 150 px allows very slight overlap only
+    //   for the densest chapters (7 sections × the same 45° sector).
+    // Sections are positioned from the ROOT origin so their angle from root is
+    // directly controlled and they are guaranteed to stay inside their sector.
+    const SECTOR_USE = 0.80
+    const MIN_ARC    = 150
+    const MIN_ROOT_R = 500
+
+    for (const [parentId, secIds] of Object.entries(sectionsByParent)) {
+      const p = filePositions[parentId]
+      if (!p) continue
+      const baseAngle = Math.atan2(p.y, p.x)
+      const n = secIds.length
+      const sector = sectors[parentId]
+      const sectorWidth = sector ? sector.max - sector.min : Math.PI * 1.5
+      const spread = n > 1 ? Math.min(sectorWidth * SECTOR_USE, n * 0.42) : 0
+      // rootR: large enough to guarantee MIN_ARC arc spacing between sections.
+      const rootR = n > 1
+        ? Math.max(MIN_ROOT_R, Math.ceil((n - 1) * MIN_ARC / spread))
+        : MIN_ROOT_R
+      secIds.forEach((secId, i) => {
+        const angle = baseAngle + (n > 1 ? ((i / (n - 1)) - 0.5) * spread : 0)
+        result[secId] = {
+          x: rootR * Math.cos(angle),
+          y: rootR * Math.sin(angle),
+          isRoot: false,
+          depth: 2,
+        }
+      })
+    }
+    return result
+  }, [filePositions, visibleNodes, focusedNode])
+
+  // Keep a ref so drag callbacks always see the latest layout positions
+  const layoutPositionsRef = useRef(layoutPositions)
   useEffect(() => {
-    setPositions(layoutPositions)
-    const fit = computeFit(layoutPositions, window.innerWidth, window.innerHeight)
-    setTransform(fit)
+    layoutPositionsRef.current = layoutPositions
   }, [layoutPositions])
 
-  // Auto-fit the view whenever the layout changes
-  useEffect(() => {
-    const vals = Object.values(layoutPositions)
-    if (!vals.length) return
+  // Manual drag overrides; reset whenever the layout is recomputed
+  const [dragOverrides, setDragOverrides] = useState({})
+  const [prevLayout, setPrevLayout] = useState(layoutPositions)
+  if (prevLayout !== layoutPositions) {
+    setPrevLayout(layoutPositions)
+    setDragOverrides({})
+  }
 
-    const xs = vals.map(p => p.x)
-    const ys = vals.map(p => p.y)
-    // Add padding for node dimensions
-    const minX = Math.min(...xs) - 130
-    const maxX = Math.max(...xs) + 130
-    const minY = Math.min(...ys) - 50
-    const maxY = Math.max(...ys) + 50
+  // Merged render positions: layout base + any drag offsets
+  const positions = useMemo(
+    () => ({ ...layoutPositions, ...dragOverrides }),
+    [layoutPositions, dragOverrides]
+  )
 
-    const graphW = maxX - minX
-    const graphH = maxY - minY
-
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-
-    // Reserve space: top HUD ~90px, bottom controls bar ~70px, sides ~40px
-    const padTop    = 90
-    const padBottom = 70
-    const padSide   = 40
-    const availW = vw - padSide * 2
-    const availH = vh - padTop - padBottom
-
-    const scale = Math.min(availW / graphW, availH / graphH, 1)
-
-    const cx = (minX + maxX) / 2
-    const cy = (minY + maxY) / 2
-
-    setTransform({
-      x: vw / 2 - cx * scale,
-      y: padTop + availH / 2 - cy * scale,
-      scale,
-    })
-  }, [layoutPositions])
+  // Compute the fitted transform whenever layout or fitIds change.
+  // Using the render-phase derived-state reset (React-approved pattern) to avoid
+  // calling setState inside an effect.
+  // null initial value ensures the reset fires on first render,
+  // before the user has seen any "dummy" transform.
+  const fittedTransform = useMemo(
+    () => computeViewFit(layoutPositions, fitIds),
+    [layoutPositions, fitIds]
+  )
+  const [prevFitted, setPrevFitted] = useState(null)
+  if (prevFitted !== fittedTransform) {
+    setPrevFitted(fittedTransform)
+    setTransform(fittedTransform)
+  }
 
   const nodeMap = useMemo(
     () => Object.fromEntries(visibleNodes.map(n => [n.id, n])),
@@ -201,8 +280,8 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
     lastMousePos.current = { x: e.clientX, y: e.clientY }
     if (nodeDragging.current) {
       const scale = transformRef.current.scale
-      setPositions(prev => {
-        const p = prev[nodeDragging.current]
+      setDragOverrides(prev => {
+        const p = { ...layoutPositionsRef.current, ...prev }[nodeDragging.current]
         if (!p) return prev
         return { ...prev, [nodeDragging.current]: { ...p, x: p.x + dx / scale, y: p.y + dy / scale } }
       })
@@ -411,14 +490,15 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
 
           const start = borderPt(fromP.x, fromP.y, fd.w, fd.h, toP.x, toP.y)
           const end   = borderPt(toP.x,   toP.y,   td.w, td.h, fromP.x, fromP.y)
+
+          const isHighlighted = selectedNode &&
+            (edge.source === selectedNode.id || edge.target === selectedNode.id)
+
           const mx = (start.x + end.x) / 2, my = (start.y + end.y) / 2
           const ddx = end.x - start.x, ddy = end.y - start.y
           const dist = Math.sqrt(ddx * ddx + ddy * ddy) || 1
           const cpx = mx - (ddy / dist) * dist * 0.1
           const cpy = my + (ddx / dist) * dist * 0.1
-
-          const isHighlighted = selectedNode &&
-            (edge.source === selectedNode.id || edge.target === selectedNode.id)
 
           return (
             <path

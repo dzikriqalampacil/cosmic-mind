@@ -6,21 +6,23 @@ import * as THREE from 'three'
 import GraphNode from './GraphNode'
 import GraphEdge from './GraphEdge'
 
+// Particle geometry created once at module level — avoids calling Math.random during render
+const _particleGeo = (() => {
+  const count = 200
+  const geo = new THREE.BufferGeometry()
+  const arr = new Float32Array(count * 3)
+  for (let i = 0; i < count; i++) {
+    arr[i * 3]     = (Math.random() - 0.5) * 100
+    arr[i * 3 + 1] = (Math.random() - 0.5) * 100
+    arr[i * 3 + 2] = (Math.random() - 0.5) * 100
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(arr, 3))
+  return geo
+})()
+
 // Drifting nebula dust — R3F v9 compatible
 function BackgroundParticles() {
   const ref = useRef()
-  const { geometry } = useMemo(() => {
-    const count = 200
-    const geo = new THREE.BufferGeometry()
-    const arr = new Float32Array(count * 3)
-    for (let i = 0; i < count; i++) {
-      arr[i * 3]     = (Math.random() - 0.5) * 100
-      arr[i * 3 + 1] = (Math.random() - 0.5) * 100
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 100
-    }
-    geo.setAttribute('position', new THREE.BufferAttribute(arr, 3))
-    return { geometry: geo }
-  }, [])
 
   useFrame((state) => {
     if (ref.current) {
@@ -29,7 +31,7 @@ function BackgroundParticles() {
   })
 
   return (
-    <points ref={ref} geometry={geometry}>
+    <points ref={ref} geometry={_particleGeo}>
       <pointsMaterial size={0.12} color="#6366f1" transparent opacity={0.35} sizeAttenuation />
     </points>
   )
@@ -64,9 +66,9 @@ export default function MindmapScene({
   const orbitRef = useRef()
 
   // Determine which nodes/edges are visible based on focus
-  const { visibleNodes, visibleEdges, highlightedIds } = useMemo(() => {
+  const { visibleNodes, visibleEdges } = useMemo(() => {
     if (!focusedNode) {
-      return { visibleNodes: nodes, visibleEdges: edges, highlightedIds: new Set() }
+      return { visibleNodes: nodes, visibleEdges: edges }
     }
     const connected = new Set([focusedNode.id])
     for (const edge of edges) {
@@ -77,7 +79,7 @@ export default function MindmapScene({
     const vEdges = edges.filter(
       (e) => connected.has(e.source) && connected.has(e.target)
     )
-    return { visibleNodes: vNodes, visibleEdges: vEdges, highlightedIds: connected }
+    return { visibleNodes: vNodes, visibleEdges: vEdges }
   }, [nodes, edges, focusedNode])
 
   // IDs connected to the selected node (for edge highlighting)

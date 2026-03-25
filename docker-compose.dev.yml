@@ -1,0 +1,11 @@
+services:
+  cosmic_mind_dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: cosmic_mind_dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
