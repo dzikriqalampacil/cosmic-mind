@@ -1,6 +1,7 @@
 ---
 title: The Pragmatic Programmer
 tags: [book, programming, craft]
+collection: The Pragmatic Programmer
 ---
 
 # The Pragmatic Programmer

@@ -1,6 +1,7 @@
 ---
 title: Ch6 While You Are Coding
 tags: [coding, refactoring, testing, algorithms, deliberate-practice]
+collection: The Pragmatic Programmer
 ---
 
 # Chapter 6 — While You Are Coding

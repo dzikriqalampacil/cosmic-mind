@@ -1,6 +1,7 @@
 ---
 title: Ch2 A Pragmatic Approach
 tags: [dry, design, prototyping, estimation]
+collection: The Pragmatic Programmer
 ---
 
 # Chapter 2 — A Pragmatic Approach

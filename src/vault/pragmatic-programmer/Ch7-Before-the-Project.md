@@ -1,6 +1,7 @@
 ---
 title: Ch7 Before the Project
 tags: [requirements, planning, specifications, puzzles]
+collection: The Pragmatic Programmer
 ---
 
 # Chapter 7 — Before the Project

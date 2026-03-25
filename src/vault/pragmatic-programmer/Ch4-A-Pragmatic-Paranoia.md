@@ -1,6 +1,7 @@
 ---
 title: Ch4 A Pragmatic Paranoia
 tags: [contracts, assertions, exceptions, resources, defensive-programming]
+collection: The Pragmatic Programmer
 ---
 
 # Chapter 4 — A Pragmatic Paranoia

@@ -72,7 +72,7 @@ function borderPt(cx, cy, w, h, toX, toY) {
   return { x: cx + nx * Math.min(tx, ty), y: cy + ny * Math.min(tx, ty) }
 }
 
-export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode, onNodeClick, onFocus }) {
+export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode, onNodeClick, onFocus, resetTrigger }) {
   const svgRef = useRef()
 
   const [transform, setTransform] = useState(
@@ -262,6 +262,11 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
     setPrevFitted(fittedTransform)
     setTransform(fittedTransform)
   }
+
+  useEffect(() => {
+    if (resetTrigger) setTransform(fittedTransform)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetTrigger])
 
   const nodeMap = useMemo(
     () => Object.fromEntries(visibleNodes.map(n => [n.id, n])),

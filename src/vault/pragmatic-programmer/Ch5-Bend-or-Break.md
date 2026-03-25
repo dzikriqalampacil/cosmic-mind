@@ -1,6 +1,7 @@
 ---
 title: Ch5 Bend or Break
 tags: [coupling, metaprogramming, concurrency, mvc, architecture]
+collection: The Pragmatic Programmer
 ---
 
 # Chapter 5 — Bend or Break

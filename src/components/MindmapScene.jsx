@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Stars } from '@react-three/drei'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
@@ -37,6 +37,25 @@ function BackgroundParticles() {
   )
 }
 
+const INITIAL_CAMERA = new THREE.Vector3(0, 0, 35)
+
+// Resets camera and orbit controls to the initial position
+function CameraResetter({ trigger, orbitRef }) {
+  const { camera } = useThree()
+
+  useEffect(() => {
+    if (!trigger) return
+    camera.position.copy(INITIAL_CAMERA)
+    camera.lookAt(0, 0, 0)
+    if (orbitRef.current) {
+      orbitRef.current.target.set(0, 0, 0)
+      orbitRef.current.update()
+    }
+  }, [trigger, camera, orbitRef])
+
+  return null
+}
+
 // Camera animator — flies to selected node
 function CameraAnimator({ targetPosition, enabled }) {
   const { camera } = useThree()
@@ -62,6 +81,7 @@ export default function MindmapScene({
   selectedNode,
   focusedNode,
   onNodeClick,
+  resetTrigger,
 }) {
   const orbitRef = useRef()
 
@@ -159,6 +179,7 @@ export default function MindmapScene({
       </EffectComposer>
 
       <CameraAnimator targetPosition={selectedPos} enabled={!!selectedNode} />
+      <CameraResetter trigger={resetTrigger} orbitRef={orbitRef} />
 
       <OrbitControls
         ref={orbitRef}

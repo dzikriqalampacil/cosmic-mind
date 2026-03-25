@@ -2,13 +2,23 @@ import { useMemo } from 'react'
 import { parseVault, buildGraph } from '../utils/parseVault'
 import { forceLayout3D } from '../utils/forceLayout'
 
-const vaultModules = import.meta.glob('../vault/*.md', { query: '?raw', import: 'default', eager: true })
+const vaultModules = import.meta.glob('../vault/**/*.md', { query: '?raw', import: 'default', eager: true })
 
-export function useGraph() {
+// Parse once at module level — vault files are static at build time
+const _allFiles = parseVault(vaultModules)
+const _collections = [...new Set(
+  Object.values(_allFiles).map(f => f.collection).filter(Boolean)
+)].sort()
+
+export function useGraph(selectedCollection) {
   const { nodes, edges } = useMemo(() => {
-    const files = parseVault(vaultModules)
+    const files = selectedCollection
+      ? Object.fromEntries(
+          Object.entries(_allFiles).filter(([, f]) => f.collection === selectedCollection)
+        )
+      : _allFiles
     return buildGraph(files)
-  }, [])
+  }, [selectedCollection])
 
   const positions = useMemo(() => {
     // 3D layout only uses file-level nodes; sections are 2D-only
@@ -18,5 +28,5 @@ export function useGraph() {
     return forceLayout3D(fileNodes, fileEdges)
   }, [nodes, edges])
 
-  return { nodes, edges, positions }
+  return { nodes, edges, positions, collections: _collections }
 }

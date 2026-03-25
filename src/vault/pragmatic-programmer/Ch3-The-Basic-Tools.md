@@ -1,6 +1,7 @@
 ---
 title: Ch3 The Basic Tools
 tags: [tools, debugging, editors, version-control]
+collection: The Pragmatic Programmer
 ---
 
 # Chapter 3 — The Basic Tools

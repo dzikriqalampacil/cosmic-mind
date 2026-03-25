@@ -1,6 +1,7 @@
 ---
 title: Ch1 A Pragmatic Philosophy
 tags: [philosophy, mindset, career, communication]
+collection: The Pragmatic Programmer
 ---
 
 # Chapter 1 — A Pragmatic Philosophy

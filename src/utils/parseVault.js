@@ -27,6 +27,8 @@ function parseFrontmatter(raw) {
     if (tagsMatch) {
       data.tags = tagsMatch[1].split(',').map(t => t.trim()).filter(Boolean)
     }
+    const collectionMatch = line.match(/^collection:\s*(.+)$/)
+    if (collectionMatch) { data.collection = collectionMatch[1].trim(); continue }
   }
   return { data, content }
 }
@@ -70,6 +72,7 @@ export function parseVault(rawModules) {
         frontmatter,
         links,
         tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
+        collection: frontmatter.collection || null,
         color: NODE_COLORS[colorIndex % NODE_COLORS.length],
       }
       colorIndex++

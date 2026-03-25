@@ -1,6 +1,7 @@
 ---
 title: Ch8 Pragmatic Projects
 tags: [teams, automation, testing, documentation, delivery]
+collection: The Pragmatic Programmer
 ---
 
 # Chapter 8 — Pragmatic Projects
