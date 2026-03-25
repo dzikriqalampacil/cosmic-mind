@@ -84,6 +84,10 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
   // Touch state machine
   const touchState = useRef({ type: 'none' })
 
+  // Keyboard pan state
+  const keysHeld   = useRef(new Set())
+  const kbFrameRef = useRef(null)
+
   // Nodes that have section children → double-click focusable
   const focusableIds = useMemo(() => {
     const ids = new Set()
@@ -309,6 +313,63 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
       window.removeEventListener('mouseup', onMouseUp)
     }
   }, [onMouseMove, onMouseUp])
+
+  // ── Keyboard pan (WASD / arrow keys) ──
+  const kbPanLoop = useRef(null)
+  kbPanLoop.current = () => {
+    const keys = keysHeld.current
+    if (keys.size === 0) { kbFrameRef.current = null; return }
+    const SPEED = 10
+    let dx = 0, dy = 0
+    if (keys.has('ArrowLeft')  || keys.has('a')) dx += SPEED
+    if (keys.has('ArrowRight') || keys.has('d')) dx -= SPEED
+    if (keys.has('ArrowUp')    || keys.has('w')) dy += SPEED
+    if (keys.has('ArrowDown')  || keys.has('s')) dy -= SPEED
+    if (dx !== 0 || dy !== 0) setTransform(t => ({ ...t, x: t.x + dx, y: t.y + dy }))
+    kbFrameRef.current = requestAnimationFrame(() => kbPanLoop.current())
+  }
+
+  useEffect(() => {
+    const PAN_KEYS  = new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','d','w','s'])
+    const ZOOM_KEYS = new Set(['w','s','ArrowUp','ArrowDown'])
+
+    const onKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+
+      // Space+W/ArrowUp → zoom in, Space+S/ArrowDown → zoom out
+      if (keysHeld.current.has(' ') && ZOOM_KEYS.has(e.key)) {
+        e.preventDefault()
+        const factor = (e.key === 'w' || e.key === 'ArrowUp') ? 1.04 : 0.96
+        setTransform(t => {
+          const newScale = Math.min(4, Math.max(0.15, t.scale * factor))
+          const cx = window.innerWidth / 2, cy = window.innerHeight / 2
+          return {
+            x: cx - (cx - t.x) * (newScale / t.scale),
+            y: cy - (cy - t.y) * (newScale / t.scale),
+            scale: newScale,
+          }
+        })
+        return
+      }
+
+      if (e.key === ' ') { e.preventDefault(); keysHeld.current.add(' '); return }
+      if (!PAN_KEYS.has(e.key)) return
+      e.preventDefault()
+      const wasEmpty = keysHeld.current.size === 0
+      keysHeld.current.add(e.key)
+      if (wasEmpty) kbFrameRef.current = requestAnimationFrame(() => kbPanLoop.current())
+    }
+
+    const onKeyUp = (e) => { keysHeld.current.delete(e.key) }
+
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup',   onKeyUp)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup',   onKeyUp)
+      if (kbFrameRef.current) cancelAnimationFrame(kbFrameRef.current)
+    }
+  }, [])
 
   const onBgMouseDown = useCallback((e) => {
     panDragging.current = true
