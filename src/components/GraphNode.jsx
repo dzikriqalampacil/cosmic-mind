@@ -5,7 +5,7 @@ import { Text, Billboard } from '@react-three/drei'
 const FLOAT_SPEED = 0.4
 const FLOAT_AMP = 0.25
 
-export default function GraphNode({ node, position, isSelected, isHighlighted, isDimmed, onClick }) {
+export default function GraphNode({ node, position, isSelected, isDimmed, onClick }) {
   const groupRef = useRef()
   const ringRef = useRef()
   const [hovered, setHovered] = useState(false)

@@ -140,7 +140,6 @@ export default function MindmapScene({
           node={node}
           position={positions[node.id]}
           isSelected={selectedNode?.id === node.id}
-          isHighlighted={selectedConnectedIds.has(node.id)}
           isDimmed={
             selectedNode != null &&
             !selectedConnectedIds.has(node.id)
