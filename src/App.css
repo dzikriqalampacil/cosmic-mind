@@ -72,7 +72,7 @@
 .sidebar__nav {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 8px;
 }
 
 .sidebar__item {

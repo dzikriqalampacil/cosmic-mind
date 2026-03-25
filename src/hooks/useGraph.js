@@ -6,7 +6,7 @@ const vaultModules = import.meta.glob('../vault/**/*.md', { query: '?raw', impor
 
 // Parse once at module level — vault files are static at build time
 const _allFiles = parseVault(vaultModules)
-const _collections = [...new Set(
+export const _collections = [...new Set(
   Object.values(_allFiles).map(f => f.collection).filter(Boolean)
 )].sort()
 

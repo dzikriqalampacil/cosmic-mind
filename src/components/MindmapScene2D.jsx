@@ -593,14 +593,6 @@ export default function MindmapScene2D({ nodes, edges, selectedNode, focusedNode
                 ))}
               </text>
 
-              {/* Focusable indicator: small dot at bottom-right corner */}
-              {isFocusable && (
-                <circle
-                  cx={p.x + w / 2 - 7} cy={p.y + h / 2 - 7}
-                  r={4} fill={node.color} opacity={0.85}
-                  style={{ pointerEvents: 'none' }}
-                />
-              )}
             </g>
           )
         })}

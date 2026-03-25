@@ -2,11 +2,11 @@ import { useState, useCallback } from 'react'
 import MindmapScene from './components/MindmapScene'
 import MindmapScene2D from './components/MindmapScene2D'
 import InfoPanel from './components/InfoPanel'
-import { useGraph } from './hooks/useGraph'
+import { useGraph, _collections as defaultCollections } from './hooks/useGraph'
 import './App.css'
 
 export default function App() {
-  const [selectedCollection, setSelectedCollection] = useState('The Pragmatic Programmer')
+  const [selectedCollection, setSelectedCollection] = useState(() => defaultCollections[0] ?? null)
   const { nodes, edges, positions, collections } = useGraph(selectedCollection)
   const [selectedNode, setSelectedNode] = useState(null)
   const [focusedNode, setFocusedNode] = useState(null)
