@@ -49,6 +49,44 @@
   text-shadow: 0 0 24px rgba(99, 102, 241, 0.5);
 }
 
+/* ── Search button in sidebar header ── */
+.sidebar__search-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  border-radius: 8px;
+  color: #475569;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: color 0.18s, background 0.18s, border-color 0.18s;
+  text-align: left;
+}
+
+.sidebar__search-btn:hover {
+  color: #94a3b8;
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.sidebar__search-btn span {
+  flex: 1;
+}
+
+.sidebar__search-btn kbd {
+  font-family: inherit;
+  font-size: 0.65rem;
+  color: #334155;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
 /* ── Section label ── */
 .sidebar__label {
   display: block;

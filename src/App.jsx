@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import MindmapScene from './components/MindmapScene'
 import MindmapScene2D from './components/MindmapScene2D'
 import InfoPanel from './components/InfoPanel'
+import SearchPalette from './components/SearchPalette'
 import { useGraph, _collections as defaultCollections } from './hooks/useGraph'
 import './App.css'
 
@@ -14,8 +15,21 @@ export default function App() {
   const [is3D, setIs3D] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [resetTrigger, setResetTrigger] = useState(0)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   const handleRecenter = useCallback(() => setResetTrigger(n => n + 1), [])
+
+  // Ctrl+K global shortcut
+  useEffect(() => {
+    function onKeyDown(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        setSearchOpen(o => !o)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   const handleCollectionChange = useCallback((col) => {
     setSelectedCollection(col)
@@ -54,11 +68,18 @@ export default function App() {
     setFocusedNode(null)
   }, [])
 
+  const handleSearchSelect = useCallback((node) => {
+    // In 3D, sections don't exist — select the parent file node instead
+    const target = (is3D && node.isSection)
+      ? nodes.find(n => n.id === node.parentId) ?? node
+      : node
+    handleFocus(target)
+  }, [is3D, nodes, handleFocus])
+
   // Stats and 3D props use file-level nodes only (sections are 2D-only)
   const fileNodes = nodes.filter(n => !n.isSection)
   const fileEdges = edges.filter(e => !e.isSection)
   const nodeCount = fileNodes.length
-  const edgeCount = fileEdges.length
 
   return (
     <div className="app">
@@ -93,6 +114,18 @@ export default function App() {
             <img src="/favicon.png" width="18" height="18" alt="Cosmic Mind logo" />
             <span>Cosmic Mind</span>
           </div>
+          <button
+            className="sidebar__search-btn"
+            onClick={() => setSearchOpen(true)}
+            title="Search nodes (Ctrl+K)"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <span>Search</span>
+            <kbd>⌃K</kbd>
+          </button>
         </div>
 
         {/* Library section */}
@@ -203,6 +236,15 @@ export default function App() {
         onClose={() => setSelectedNode(null)}
         onFocus={handleFocus}
       />
+
+      {/* Search palette */}
+      {searchOpen && (
+        <SearchPalette
+          nodes={nodes}
+          onSelect={handleSearchSelect}
+          onClose={() => setSearchOpen(false)}
+        />
+      )}
     </div>
   )
 }
