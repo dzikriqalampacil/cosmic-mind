@@ -57,18 +57,24 @@ function CameraResetter({ trigger, orbitRef }) {
 }
 
 // Camera animator — flies to selected node
-function CameraAnimator({ targetPosition, enabled }) {
+function CameraAnimator({ targetPosition, enabled, orbitRef }) {
   const { camera } = useThree()
-  const targetRef = useRef(new THREE.Vector3())
+  const camTargetRef = useRef(new THREE.Vector3())
+  const orbitTargetRef = useRef(new THREE.Vector3())
 
   useFrame(() => {
     if (!enabled || !targetPosition) return
-    targetRef.current.set(
+    camTargetRef.current.set(
       targetPosition.x,
       targetPosition.y + 2,
       targetPosition.z + 12
     )
-    camera.position.lerp(targetRef.current, 0.04)
+    orbitTargetRef.current.set(targetPosition.x, targetPosition.y, targetPosition.z)
+    camera.position.lerp(camTargetRef.current, 0.04)
+    if (orbitRef.current) {
+      orbitRef.current.target.lerp(orbitTargetRef.current, 0.04)
+      orbitRef.current.update()
+    }
   })
 
   return null
@@ -178,7 +184,7 @@ export default function MindmapScene({
         />
       </EffectComposer>
 
-      <CameraAnimator targetPosition={selectedPos} enabled={!!selectedNode} />
+      <CameraAnimator targetPosition={selectedPos} enabled={!!selectedNode} orbitRef={orbitRef} />
       <CameraResetter trigger={resetTrigger} orbitRef={orbitRef} />
 
       <OrbitControls
